@@ -1,0 +1,102 @@
+%%% Script that copies images from various flights containing sea only,
+%%% into a single folder. The images are listed in a CSV file which needs
+%%% to be parsed to find the full file paths.
+
+currentDirectory = pwd;
+targetDirectory = currentDirectory + "\Images_sea_only";
+numberOfNonFiles = 0;
+numberOfNonCopy = 0;
+
+UpperLimit = 170;                                   % Set an upper limit of "useful pixels"
+
+
+%% Load the CSV file and grab an array of File IDs and filenames.
+
+M = readtable(currentDirectory + "\image_of_sea.csv");
+M = table2cell(M);
+
+imageID = M(:,2);
+flightID = cell2mat(M(:,3));
+
+%% Open a new file for writing
+
+fileID = fopen('sea_results.csv','w');
+
+% And write the header information
+fprintf(fileID,'ImageID,FlightID,Threshold Pixels (%s)\n','%'); % CSV header
+
+%% For each element in the array:
+
+for ID=1:length(imageID)
+
+    fileName = char(imageID(ID)) + ".JPG";
+
+    %% Convert Flight ID to a specific path
+    switch (flightID(ID))
+        case 1
+            path = "\2018\Flight1\DCIM\full flight\";
+        case 3
+            path = "\2018\Flight3_Flight4\DCIM\Full_flight3\";
+        case 4
+            path = "\2018\Flight_4\full_flight4\";
+        case 5
+            path = "\2018\flight5\Full_Flight5\JPEG\";
+            fileName = char(imageID(ID)) + ".jpeg";
+        case 6
+            path = "\2018\Flight6\Stills\DCIM\fullflight_6\";
+        case 7
+            path = "\2018\Flight7_8\Stills\fullflight7\";
+        case 8
+            path = "\2018\Flight7_8\Stills\fullflight8\";
+        case 9
+            path = "\2018\Flight9\Stills\flight9full\";
+        case 12
+            path = "\2020\Egmont flight 1 110m\F4_flight_only\";
+        case 13
+            path = "\2020\Egmont flight 2 80m\F5_flightonly\";
+        case 14
+            path = "\2020\3_brothers\Flight_only\";
+        otherwise
+            disp("INVALID FLIGHT ID: " + FlightID)
+    end
+
+
+    %% Build a full path of the file
+    fullPath = currentDirectory + path + fileName;
+    if (not(isfile(fullPath)))
+        numberOfNonFiles = numberOfNonFiles + 1;
+        disp(fullPath + " is not a file...")
+    end
+
+    %% Copy the file into a target folder
+    %disp("copyFile(" + fullPath + ", " + targetDirectory + ")")
+%     if(not(copyfile(fullPath, targetDirectory + "\" + char(imageID(ID)) + "_" + flightID(ID) + ".JPG")))
+%         numberOfNonCopy = numberOfNonCopy + 1;
+%         disp(fullPath + " did not copy...")
+%     end
+
+        I = imread(fullPath);
+    
+        %imshow(I); 
+        Iblur = imgaussfilt(I,5);
+        %imshow(Iblur);
+    
+        GrayScale_Image = rgb2gray(I);% here add the masked image and give a 
+        %new name for the grayscale version
+    
+        [xPix,yPix] = size(GrayScale_Image);                  % Get total number of pixels    
+    
+        WhiteCount = sum(sum(GrayScale_Image>UpperLimit));    % Get number of above limit pixels
+        PercentageWhite = (WhiteCount/(xPix*yPix))*100; % Get total value value of white
+    
+        %% Print results to the opened CSV file 
+
+        fprintf(fileID,'%s,%d,%f\n',string(imageID(ID)), flightID(ID), PercentageWhite);  % Structure a string with info
+end
+
+if ((numberOfNonFiles == 0) && (numberOfNonCopy == 0))
+    disp("Script Finished without errors!")
+end
+
+fileID = fclose(fileID);
+    
